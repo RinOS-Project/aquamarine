@@ -4,7 +4,7 @@
  */
 
 #include "aq_surface.h"
-#include "../../src/shared/rin_render_target.h"
+#include <rin/render_target.h>
 #include <limits.h>
 
 /* ═══════════════════════════════════════════════════════════════
