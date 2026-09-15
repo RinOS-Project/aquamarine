@@ -7,6 +7,7 @@
 #include "aq_blend.h"
 #include "aq_font_8x16.h"
 #include "rin_unicode.h"
+#include <limits.h>
 #include <stddef.h>
 
 /* ═══════════════════════════════════════════════════════════════
@@ -274,6 +275,30 @@ AqFont* aq_font_load_psf(const uint8_t* data, uint32_t size) {
 
     g_aq_free(font);
     return 0;
+}
+
+AqFont* aq_font_load_resource_psf(
+    const RinResourceCatalogV1* catalog, uint32_t resource_id,
+    RinResourceCatalogReadPathFunction read_path, void* context,
+    uint8_t* storage, uint64_t storage_capacity, uint64_t* storage_size) {
+    RinResourceCatalogStatus status;
+
+    if (storage_size == 0) return 0;
+    *storage_size = 0u;
+    if (storage_capacity > UINT32_MAX ||
+        (storage_capacity != 0u && storage == 0))
+        return 0;
+
+    status = rin_resource_catalog_load(
+        catalog, RIN_RESOURCE_CATALOG_TYPE_FONT, resource_id, read_path,
+        context, storage, storage_capacity, storage_size);
+    if (status != RIN_RESOURCE_CATALOG_OK || *storage_size > UINT32_MAX ||
+        *storage_size == 0u)
+        return 0;
+
+    AqFont* font = aq_font_load_psf(storage, (uint32_t)*storage_size);
+    if (!font) *storage_size = 0u;
+    return font;
 }
 
 void aq_font_destroy(AqFont* font) {

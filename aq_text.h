@@ -8,6 +8,7 @@
 
 #include "aq_types.h"
 #include "aq_surface.h"
+#include "rinresource/loader.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -22,6 +23,15 @@ const AqFont* aq_font_builtin_8x16(void);
  * 1024x1024, rather than admitting a font whose native drawing loops cannot
  * bound safely. */
 AqFont* aq_font_load_psf(const uint8_t* data, uint32_t size);
+
+/* Load a PSF font selected by a public resource catalog.  The catalog and
+ * path reader remain caller-owned; this function only copies the selected
+ * blob/path result into storage and parses it.  storage must remain valid for
+ * the lifetime of the returned font, and storage_size is cleared on failure. */
+AqFont* aq_font_load_resource_psf(
+    const RinResourceCatalogV1* catalog, uint32_t resource_id,
+    RinResourceCatalogReadPathFunction read_path, void* context,
+    uint8_t* storage, uint64_t storage_capacity, uint64_t* storage_size);
 
 /* Destroy a dynamically loaded font */
 void aq_font_destroy(AqFont* font);

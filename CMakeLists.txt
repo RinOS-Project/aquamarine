@@ -18,6 +18,7 @@ target_compile_features(Aquamarine PUBLIC c_std_11)
 target_include_directories(Aquamarine PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../libunicode>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../rinresource/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../RinOS-SDK/include>
     $<INSTALL_INTERFACE:include/aquamarine>
     $<INSTALL_INTERFACE:include>)

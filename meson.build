@@ -1,7 +1,8 @@
 project('Aquamarine', 'c', version: '1.0.0',
         default_options: ['c_std=c11', 'warning_level=3'])
 
-aq_inc = include_directories('.', '../libunicode', '../../RinOS-SDK/include')
+aq_inc = include_directories('.', '../libunicode', '../rinresource/include',
+                             '../../RinOS-SDK/include')
 aq_sources = files('aq_blend.c', 'aq_color.c', 'aq_draw.c', 'aq_gradient.c',
                    'aq_path.c', 'aq_render3d.c', 'aq_surface.c', 'aq_text.c',
                    'aq_transform.c', '../libunicode/core.c')
