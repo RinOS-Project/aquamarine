@@ -8,7 +8,7 @@
 
 #include "aq_types.h"
 #include "aq_surface.h"
-#include "rinresource/loader.h"
+#include "../rinresource/include/rinresource/loader.h"
 
 #ifdef __cplusplus
 extern "C" {
