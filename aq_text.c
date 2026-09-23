@@ -377,6 +377,20 @@ const uint8_t* aq_font_glyph_data(const AqFont* font, int32_t glyph_index) {
     return font->glyphs + glyph_offset;
 }
 
+/* Locale CJK PSF fonts use a 16-pixel cell for ideographs and carry narrow
+ * ASCII shapes in that cell.  Render printable Latin from the dedicated
+ * 8x16 face instead of cropping a CJK glyph bitmap; this keeps Latin stroke
+ * weight and glyph placement consistent across every text API. */
+static const AqFont* aq_text_glyph_font(const AqFont* font,
+                                       uint32_t codepoint) {
+    if (!font) font = aq_font_default();
+    if (font != &g_builtin_font && font->glyph_w >= 16 &&
+        font->glyph_h == g_builtin_font.glyph_h &&
+        codepoint >= 0x20u && codepoint <= 0x7Eu)
+        return &g_builtin_font;
+    return font;
+}
+
 static void aq_draw_missing_glyph(AqSurface* s, int32_t x, int32_t y,
                                   int32_t width, int32_t height,
                                   AqColor color) {
@@ -451,6 +465,7 @@ static void aq_draw_string_scaled_impl(
         int32_t advance;
         int32_t scaled_advance = 0;
         int32_t idx;
+        const AqFont* glyph_font;
         const uint8_t* glyph;
         int32_t draw_x;
         if (cp == 0u) break;
@@ -467,15 +482,17 @@ static void aq_draw_string_scaled_impl(
                                                  denominator,
                                                  &scaled_advance))
             continue;
-        idx = aq_font_lookup_glyph(font, cp);
-        glyph = aq_font_glyph_data(font, idx);
+        glyph_font = aq_text_glyph_font(font, cp);
+        idx = aq_font_lookup_glyph(glyph_font, cp);
+        glyph = aq_font_glyph_data(glyph_font, idx);
         draw_x = advance == 0 ? cx - previous_advance : cx;
         if (glyph) {
-            int32_t bytes_per_row = (font->glyph_w + 7) / 8;
-            int32_t draw_columns = advance > 0 && advance < font->glyph_w
-                                       ? advance : font->glyph_w;
+            int32_t bytes_per_row = (glyph_font->glyph_w + 7) / 8;
+            int32_t draw_columns =
+                advance > 0 && advance < glyph_font->glyph_w
+                    ? advance : glyph_font->glyph_w;
             int32_t row;
-            for (row = 0; row < font->glyph_h; ++row) {
+            for (row = 0; row < glyph_font->glyph_h; ++row) {
                 int32_t y0 = aq_text_scale_floor(row, numerator, denominator);
                 int32_t y1 = aq_text_scale_ceil(row + 1, numerator, denominator);
                 int32_t col;
@@ -514,16 +531,18 @@ void aq_draw_char(AqSurface* s, int32_t x, int32_t y, char c,
     if (!s || color.a == 0) return;
     if (!font) font = aq_font_default();
 
-    int32_t idx = aq_font_lookup_glyph(font, (uint32_t)(uint8_t)c);
-    const uint8_t* glyph = aq_font_glyph_data(font, idx);
+    uint32_t codepoint = (uint32_t)(uint8_t)c;
+    const AqFont* glyph_font = aq_text_glyph_font(font, codepoint);
+    int32_t idx = aq_font_lookup_glyph(glyph_font, codepoint);
+    const uint8_t* glyph = aq_font_glyph_data(glyph_font, idx);
     if (!glyph) {
         aq_draw_missing_glyph(s, x, y, font->glyph_w, font->glyph_h, color);
         return;
     }
-    int32_t bytes_per_row = (font->glyph_w + 7) / 8;
+    int32_t bytes_per_row = (glyph_font->glyph_w + 7) / 8;
 
-    for (int32_t row = 0; row < font->glyph_h; row++) {
-        for (int32_t col = 0; col < font->glyph_w; col++) {
+    for (int32_t row = 0; row < glyph_font->glyph_h; row++) {
+        for (int32_t col = 0; col < glyph_font->glyph_w; col++) {
             int32_t byte_idx = row * bytes_per_row + col / 8;
             int32_t bit_idx = 7 - (col % 8);
 
@@ -551,15 +570,16 @@ void aq_draw_string(AqSurface* s, int32_t x, int32_t y, const char* str,
             previous_advance = 0;
         } else {
             int32_t advance = aq_text_codepoint_advance(font, cp);
-            int32_t idx = aq_font_lookup_glyph(font, cp);
-            const uint8_t* glyph = aq_font_glyph_data(font, idx);
+            const AqFont* glyph_font = aq_text_glyph_font(font, cp);
+            int32_t idx = aq_font_lookup_glyph(glyph_font, cp);
+            const uint8_t* glyph = aq_font_glyph_data(glyph_font, idx);
             int32_t draw_x = advance == 0 ? cx - previous_advance : cx;
             if (glyph) {
-                int32_t bytes_per_row = (font->glyph_w + 7) / 8;
+                int32_t bytes_per_row = (glyph_font->glyph_w + 7) / 8;
                 int32_t draw_columns =
-                    advance > 0 && advance < font->glyph_w
-                        ? advance : font->glyph_w;
-                for (int32_t row = 0; row < font->glyph_h; row++) {
+                    advance > 0 && advance < glyph_font->glyph_w
+                        ? advance : glyph_font->glyph_w;
+                for (int32_t row = 0; row < glyph_font->glyph_h; row++) {
                     for (int32_t col = 0; col < draw_columns; col++) {
                         int32_t byte_idx = row * bytes_per_row + col / 8;
                         int32_t bit_idx = 7 - (col % 8);
@@ -636,15 +656,16 @@ void aq_draw_string_clipped(AqSurface* s, int32_t x, int32_t y,
             previous_advance = 0;
         } else {
             int32_t advance = aq_text_codepoint_advance(font, cp);
-            int32_t idx = aq_font_lookup_glyph(font, cp);
-            const uint8_t* glyph = aq_font_glyph_data(font, idx);
+            const AqFont* glyph_font = aq_text_glyph_font(font, cp);
+            int32_t idx = aq_font_lookup_glyph(glyph_font, cp);
+            const uint8_t* glyph = aq_font_glyph_data(glyph_font, idx);
             int32_t draw_x = advance == 0 ? cx - previous_advance : cx;
             if (glyph) {
-                int32_t bytes_per_row = (font->glyph_w + 7) / 8;
+                int32_t bytes_per_row = (glyph_font->glyph_w + 7) / 8;
                 int32_t draw_columns =
-                    advance > 0 && advance < font->glyph_w
-                        ? advance : font->glyph_w;
-                for (int32_t row = 0; row < font->glyph_h; ++row) {
+                    advance > 0 && advance < glyph_font->glyph_w
+                        ? advance : glyph_font->glyph_w;
+                for (int32_t row = 0; row < glyph_font->glyph_h; ++row) {
                     for (int32_t col = 0; col < draw_columns; ++col) {
                         int32_t byte_idx = row * bytes_per_row + col / 8;
                         int32_t bit_idx = 7 - (col % 8);
@@ -716,15 +737,16 @@ void aq_draw_string_to_target(int32_t x, int32_t y, const char* str,
             previous_advance = 0;
         } else {
             int32_t advance = aq_text_codepoint_advance(font, cp);
-            int32_t glyph_index = aq_font_lookup_glyph(font, cp);
-            const uint8_t* glyph = aq_font_glyph_data(font, glyph_index);
+            const AqFont* glyph_font = aq_text_glyph_font(font, cp);
+            int32_t glyph_index = aq_font_lookup_glyph(glyph_font, cp);
+            const uint8_t* glyph = aq_font_glyph_data(glyph_font, glyph_index);
             int32_t draw_x = advance == 0 ? cx - previous_advance : cx;
             if (glyph) {
-                int32_t bytes_per_row = (font->glyph_w + 7) / 8;
+                int32_t bytes_per_row = (glyph_font->glyph_w + 7) / 8;
                 int32_t draw_columns =
-                    advance > 0 && advance < font->glyph_w
-                        ? advance : font->glyph_w;
-                for (int32_t row = 0; row < font->glyph_h; ++row) {
+                    advance > 0 && advance < glyph_font->glyph_w
+                        ? advance : glyph_font->glyph_w;
+                for (int32_t row = 0; row < glyph_font->glyph_h; ++row) {
                     for (int32_t col = 0; col < draw_columns; ++col) {
                         int32_t byte_idx = row * bytes_per_row + col / 8;
                         int32_t bit_idx = 7 - (col % 8);
@@ -799,6 +821,7 @@ void aq_draw_string_to_target_scaled_xy(
         int32_t advance;
         int32_t scaled_advance = 0;
         int32_t idx;
+        const AqFont* glyph_font;
         const uint8_t* glyph;
         int32_t draw_x;
         if (cp == 0u) break;
@@ -814,15 +837,17 @@ void aq_draw_string_to_target_scaled_xy(
             (advance > 0 && !aq_text_scale_axis_extent(
                 advance, x_numerator, x_denominator, &scaled_advance)))
             continue;
-        idx = aq_font_lookup_glyph(font, cp);
-        glyph = aq_font_glyph_data(font, idx);
+        glyph_font = aq_text_glyph_font(font, cp);
+        idx = aq_font_lookup_glyph(glyph_font, cp);
+        glyph = aq_font_glyph_data(glyph_font, idx);
         draw_x = advance == 0 ? cx - previous_advance : cx;
         if (glyph) {
-            int32_t bytes_per_row = (font->glyph_w + 7) / 8;
-            int32_t draw_columns = advance > 0 && advance < font->glyph_w
-                                       ? advance : font->glyph_w;
+            int32_t bytes_per_row = (glyph_font->glyph_w + 7) / 8;
+            int32_t draw_columns =
+                advance > 0 && advance < glyph_font->glyph_w
+                    ? advance : glyph_font->glyph_w;
             int32_t row;
-            for (row = 0; row < font->glyph_h; ++row) {
+            for (row = 0; row < glyph_font->glyph_h; ++row) {
                 int32_t y0 = aq_text_scale_axis_floor(
                     row, y_numerator, y_denominator);
                 int32_t y1 = aq_text_scale_axis_ceil(
