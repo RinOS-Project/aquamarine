@@ -106,7 +106,7 @@ static inline void aq_gradient_v(AqSurface* surface, int32_t x, int32_t y,
 static inline void aq_draw_string(AqSurface* surface, int32_t x, int32_t y,
                                   const char* text, uint32_t color) {
     aq_draw_string(surface, x, y, text, aq_app_color(color),
-                   aq_font_builtin_8x16());
+                   aq_font_default());
 }
 
 static inline void aq_draw_string_scaled(AqSurface* surface, int32_t x,
@@ -114,15 +114,15 @@ static inline void aq_draw_string_scaled(AqSurface* surface, int32_t x,
                                          uint32_t color, uint32_t numerator,
                                          uint32_t denominator) {
     aq_draw_string_scaled(surface, x, y, text, aq_app_color(color),
-                          aq_font_builtin_8x16(), numerator, denominator);
+                          aq_font_default(), numerator, denominator);
 }
 
 static inline int32_t aq_text_width(const char* text) {
-    return aq_text_width(text, aq_font_builtin_8x16());
+    return aq_text_width(text, aq_font_default());
 }
 
 static inline int32_t aq_text_height(void) {
-    return aq_font_builtin_8x16()->glyph_h;
+    return aq_font_default()->glyph_h;
 }
 
 static inline uint32_t aq_color_lighten(uint32_t color, float amount) {

@@ -16,6 +16,10 @@ extern "C" {
 
 /* Get the built-in 8x16 bitmap font (no allocation needed) */
 const AqFont* aq_font_builtin_8x16(void);
+/* Select a process-wide default used by convenience drawing APIs.  Passing
+ * NULL restores the built-in ASCII font. */
+void aq_set_default_font(const AqFont* font);
+const AqFont* aq_font_default(void);
 
 /* Load a PSF1/PSF2 font from memory buffer.
  * The data buffer must remain valid for the lifetime of the font. The loader

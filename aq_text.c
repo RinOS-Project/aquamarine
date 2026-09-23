@@ -26,9 +26,21 @@ static const AqFont g_builtin_font = {
     .owns_unicode_lookup = 0,
     .reserved = {0, 0, 0},
 };
+static const AqFont* g_default_font;
 
 const AqFont* aq_font_builtin_8x16(void) {
     return &g_builtin_font;
+}
+
+void aq_set_default_font(const AqFont* font) {
+    __atomic_store_n(&g_default_font,
+                     font ? font : &g_builtin_font,
+                     __ATOMIC_RELEASE);
+}
+
+const AqFont* aq_font_default(void) {
+    const AqFont* font = __atomic_load_n(&g_default_font, __ATOMIC_ACQUIRE);
+    return font ? font : &g_builtin_font;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -323,7 +335,7 @@ uint32_t aq_text_decode_utf8(const char** str) {
 }
 
 int32_t aq_font_lookup_glyph(const AqFont* font, uint32_t codepoint) {
-    if (!font) font = &g_builtin_font;
+    if (!font) font = aq_font_default();
 
     if (font->unicode_lookup &&
         codepoint < font->unicode_lookup_len &&
@@ -345,7 +357,7 @@ int32_t aq_font_lookup_glyph(const AqFont* font, uint32_t codepoint) {
 int32_t aq_text_codepoint_advance(const AqFont* font, uint32_t codepoint) {
     int cells;
     int32_t narrow;
-    if (!font) font = &g_builtin_font;
+    if (!font) font = aq_font_default();
     cells = rin_unicode_cell_width(codepoint);
     if (cells <= 0) return 0;
     narrow = font->glyph_w >= 16 ? font->glyph_w / 2 : font->glyph_w;
@@ -355,7 +367,7 @@ int32_t aq_text_codepoint_advance(const AqFont* font, uint32_t codepoint) {
 const uint8_t* aq_font_glyph_data(const AqFont* font, int32_t glyph_index) {
     int64_t glyph_count;
     int64_t glyph_offset;
-    if (!font) font = &g_builtin_font;
+    if (!font) font = aq_font_default();
     if (!font->glyphs || glyph_index < 0 || font->bytes_per_glyph <= 0) return 0;
 
     glyph_count = (int64_t)font->last_char - font->first_char + 1;
@@ -430,7 +442,7 @@ static void aq_draw_string_scaled_impl(
     int32_t previous_advance = 0;
     int32_t scaled_glyph_h;
     if (!s || !str || color.a == 0) return;
-    if (!font) font = &g_builtin_font;
+    if (!font) font = aq_font_default();
     if (!aq_text_scale_extent(font->glyph_h, numerator, denominator,
                               &scaled_glyph_h)) return;
     cx = x;
@@ -500,7 +512,7 @@ static void aq_draw_string_scaled_impl(
 void aq_draw_char(AqSurface* s, int32_t x, int32_t y, char c,
                   AqColor color, const AqFont* font) {
     if (!s || color.a == 0) return;
-    if (!font) font = &g_builtin_font;
+    if (!font) font = aq_font_default();
 
     int32_t idx = aq_font_lookup_glyph(font, (uint32_t)(uint8_t)c);
     const uint8_t* glyph = aq_font_glyph_data(font, idx);
@@ -525,7 +537,7 @@ void aq_draw_char(AqSurface* s, int32_t x, int32_t y, char c,
 void aq_draw_string(AqSurface* s, int32_t x, int32_t y, const char* str,
                     AqColor color, const AqFont* font) {
     if (!s || !str) return;
-    if (!font) font = &g_builtin_font;
+    if (!font) font = aq_font_default();
 
     int32_t cx = x;
     int32_t previous_advance = 0;
@@ -611,7 +623,7 @@ void aq_draw_string_clipped(AqSurface* s, int32_t x, int32_t y,
     int32_t cx;
     int32_t previous_advance = 0;
     if (!s || !str) return;
-    if (!font) font = &g_builtin_font;
+    if (!font) font = aq_font_default();
 
     cx = x;
     while (*str) {
@@ -692,7 +704,7 @@ void aq_draw_string_to_target(int32_t x, int32_t y, const char* str,
     int32_t cx;
     int32_t previous_advance = 0;
     if (!str || !put_pixel || color.a == 0) return;
-    if (!font) font = &g_builtin_font;
+    if (!font) font = aq_font_default();
     cx = x;
     while (*str) {
         uint32_t cp = aq_text_decode_utf8(&str);
@@ -777,7 +789,7 @@ void aq_draw_string_to_target_scaled_xy(
             font ? font->glyph_h : 16, y_numerator, y_denominator,
             &scaled_glyph_h))
         return;
-    if (!font) font = &g_builtin_font;
+    if (!font) font = aq_font_default();
     if (!aq_text_scale_axis_valid(x_numerator, x_denominator) ||
         !aq_text_scale_axis_valid(y_numerator, y_denominator))
         return;
@@ -901,7 +913,7 @@ void aq_draw_string_clipped_scaled_xy(
 void aq_draw_string_centered(AqSurface* s, AqRect rect, const char* str,
                              AqColor color, const AqFont* font) {
     if (!s || !str) return;
-    if (!font) font = &g_builtin_font;
+    if (!font) font = aq_font_default();
 
     int32_t tw = aq_text_width(str, font);
     int32_t th = font->glyph_h;
@@ -914,7 +926,7 @@ void aq_draw_string_centered(AqSurface* s, AqRect rect, const char* str,
 
 int32_t aq_text_width(const char* str, const AqFont* font) {
     if (!str) return 0;
-    if (!font) font = &g_builtin_font;
+    if (!font) font = aq_font_default();
 
     int32_t max_w = 0;
     int32_t cur_w = 0;
@@ -936,7 +948,7 @@ int32_t aq_text_width(const char* str, const AqFont* font) {
 
 int32_t aq_text_height(const char* str, const AqFont* font) {
     if (!str || !*str) return 0;
-    if (!font) font = &g_builtin_font;
+    if (!font) font = aq_font_default();
 
     int32_t lines = 1;
     while (*str) {
