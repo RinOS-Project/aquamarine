@@ -16,3 +16,10 @@ install_headers('aq_blend.h', 'aq_clip.h', 'aq_color.h', 'aq_cpp.h',
                 'aq_math3d.h', 'aq_path.h', 'aq_render3d.h', 'aq_surface.h',
                 'aq_text.h', 'aq_transform.h', 'aq_types.h', 'aquamarine.h',
                 subdir: 'aquamarine')
+
+test('aquamarine-resource-font',
+     executable('aquamarine-resource-font-test',
+                'tests/resource_font_test.c', 'aq_text.c',
+                '../libunicode/core.c',
+                include_directories: aq_inc,
+                c_args: ['-Wall', '-Wextra', '-Wpedantic']))

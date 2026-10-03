@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 project(Aquamarine VERSION 1.0.0 LANGUAGES C)
 
+option(AQUAMARINE_BUILD_TESTS
+       "Build Aquamarine public contract tests"
+       OFF)
+
 add_library(Aquamarine STATIC
     aq_blend.c
     aq_color.c
@@ -40,3 +44,23 @@ install(EXPORT AquamarineTargets
         FILE AquamarineTargets.cmake
         NAMESPACE Aquamarine::
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Aquamarine)
+
+if(AQUAMARINE_BUILD_TESTS)
+    enable_testing()
+    add_executable(aquamarine-resource-font-test
+                   tests/resource_font_test.c
+                   aq_text.c
+                   ../libunicode/core.c)
+    target_include_directories(aquamarine-resource-font-test PRIVATE
+                               ${CMAKE_CURRENT_SOURCE_DIR}
+                               ${CMAKE_CURRENT_SOURCE_DIR}/../libunicode
+                               ${CMAKE_CURRENT_SOURCE_DIR}/../rinresource/include
+                               ${CMAKE_CURRENT_SOURCE_DIR}/../../RinOS-SDK/include)
+    target_compile_features(aquamarine-resource-font-test PRIVATE c_std_11)
+    if(NOT MSVC)
+        target_compile_options(aquamarine-resource-font-test PRIVATE
+                               -Wall -Wextra -Wpedantic)
+    endif()
+    add_test(NAME aquamarine-resource-font
+             COMMAND aquamarine-resource-font-test)
+endif()
