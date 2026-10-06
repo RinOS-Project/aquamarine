@@ -10,5 +10,6 @@ compiled from the sibling public `libunicode` library source.
 
 The CMake contract test is enabled with `-DAQUAMARINE_BUILD_TESTS=ON`; Meson
 exposes the same `aquamarine-resource-font` test.  It covers blob/path
-`TYPE_FONT` loading through caller-owned storage.  Font data, path reading, and
+`TYPE_FONT` loading through caller-owned storage and rejects null or
+zero-capacity storage before a path callback.  Font data, path reading, and
 publication authority remain caller-owned.

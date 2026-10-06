@@ -93,6 +93,12 @@ int main(void) {
     assert(font != NULL && storage_size == sizeof(psf1) && source.calls == 1u);
     aq_font_destroy(font);
 
+    /* Reject an absent or empty caller buffer before the path owner sees it. */
+    storage_size = UINT64_MAX;
+    assert(aq_font_load_resource_psf(&catalog, 8u, read_path, &source,
+                                     NULL, 0u, &storage_size) == NULL);
+    assert(storage_size == 0u && source.calls == 1u);
+
     storage_size = UINT64_MAX;
     assert(aq_font_load_resource_psf(&catalog, 7u, NULL, NULL, too_small,
                                      sizeof(too_small), &storage_size) == NULL);

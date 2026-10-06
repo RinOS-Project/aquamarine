@@ -297,8 +297,8 @@ AqFont* aq_font_load_resource_psf(
 
     if (storage_size == 0) return 0;
     *storage_size = 0u;
-    if (storage_capacity > UINT32_MAX ||
-        (storage_capacity != 0u && storage == 0))
+    if (storage_capacity > UINT32_MAX || storage == 0 ||
+        storage_capacity == 0u)
         return 0;
 
     status = rin_resource_catalog_load(
